@@ -16,6 +16,7 @@
   "license": "MIT",
   "repository": "postcss/postcss-loader",
   "dependencies": {
+    "cheerio": "^0.22.0",
     "loader-utils": "^1.0.2",
     "object-assign": "^4.1.1",
     "postcss": "^5.2.15",

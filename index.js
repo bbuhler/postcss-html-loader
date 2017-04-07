@@ -3,6 +3,7 @@ var loadConfig  = require('postcss-load-config');
 var postcss     = require('postcss');
 var assign      = require('object-assign');
 var path        = require('path');
+var cheerio     = require('cheerio');
 
 var PostCSSLoaderError = require('./error');
 
@@ -126,19 +127,42 @@ module.exports = function (source, map) {
             );
         }
 
-        return postcss(plugins).process(source, opts).then(function (result) {
-            result.warnings().forEach(function (msg) {
-                loader.emitWarning(msg.toString());
+        var $ = cheerio.load(source, { decodeEntities: false });
+        var processor = postcss(plugins);
+        var promises = [];
+
+        $('style').contents().each(function (index, style) {
+            promises.push(processor.process(style.data, opts)
+                .then(function (result) {
+                    style.data = result.css;
+                    return result;
+                })
+            );
+        });
+
+        $('[style]').each(function (index, element) {
+            promises.push(processor.process(element.attribs.style, opts)
+                .then(function (result) {
+                    element.attribs.style = result.css;
+                    return result;
+                })
+            );
+        });
+
+        return Promise.all(promises).then(function (results) {
+            results.forEach(function (result) {
+                result.warnings().forEach(function (msg) {
+                    loader.emitWarning(msg.toString());
+                });
+
+                result.messages.forEach(function (msg) {
+                    if ( msg.type === 'dependency' ) {
+                        loader.addDependency(msg.file);
+                    }
+                });
             });
 
-            result.messages.forEach(function (msg) {
-                if ( msg.type === 'dependency' ) {
-                    loader.addDependency(msg.file);
-                }
-            });
-
-            var resultMap = result.map ? result.map.toJSON() : null;
-            callback(null, result.css, resultMap);
+            callback(null, $.html());
             return null;
         });
     }).catch(function (error) {
