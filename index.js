@@ -127,7 +127,7 @@ module.exports = function (source, map) {
             );
         }
 
-        var $ = cheerio.load(source, { decodeEntities: false, lowerCaseAttributeNames: false });
+        var $ = cheerio.load(source, { decodeEntities: false, xmlMode: true });
         var processor = postcss(plugins);
         var promises = [];
 
